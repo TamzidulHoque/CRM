@@ -14,3 +14,6 @@ def get_current_location():
     except:
         print("Could not detect location")
         return None, None
+
+lat, lng= get_current_location()
+print(lat, lng)

@@ -19,16 +19,16 @@ def extract_email(url):
         return []
 
 
-def run_system(user_lat, user_lng):
+def run_system(user_lat, user_lng,keywords):
 
     registered = load_registered()
     radius = SEARCH_RADIUS_START
 
-    while radius <= SEARCH_RADIUS_MAX:
+    while radius <= SEARCH_RADIUS_START:
 
         print(f"\nSearching radius: {radius/1000} km")
 
-        clinics = search_clinics(user_lat, user_lng, radius)
+        clinics = search_clinics(user_lat, user_lng, radius, keywords) 
 
         for clinic in clinics:
 
