@@ -8,7 +8,7 @@ def get_current_location():
         lat = data["lat"]
         lng = data["lon"]
 
-        print("Detected location:", data["city"], data["country"])
+        # print("Detected location:", data["city"], data["country"])
         return lat, lng
 
     except:

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Faces | Clinic Discovery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+
+<body>
+  <div class="page">
+    <div class="shell">
+      <header class="shell-header">
+        <div class="brand">
+          <div class="brand-icon">
+            <div class="brand-icon-inner">FC</div>
+          </div>
+          <div class="brand-text">
+            <div class="brand-name">Faces CRM</div>
+            <div class="brand-tagline">Find and register real clinics faster</div>
+          </div>
+        </div>
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          Live prototype
+        </div>
+      </header>
+
+      <main class="layout">
+        <section aria-label="Clinic discovery hero">
+          <p class="hero-overline">Clinic discovery</p>
+          <h1 class="hero-title">
+            Find a <span class="hero-highlight">real clinic</span> near every user.
+          </h1>
+          <p class="hero-subtitle">
+            Use the user&rsquo;s live location to search verified aesthetic clinics, send registration
+            invites, and guide them to a real, trusted provider in just a few clicks.
+          </p>
+
+          <div class="hero-actions">
+            <button class="btn btn-primary" type="button">
+              <span class="btn-icon">◎</span>
+              Start to find real clinic
+            </button>
+            <button class="btn btn-secondary" type="button">
+              Select range in user area
+            </button>
+          </div>
+
+          <div class="hero-meta">
+            <span class="meta-item">
+              <span class="meta-dot"></span>
+              Uses browser geolocation when available
+            </span>
+            <span class="meta-item">
+              <span class="meta-dot"></span>
+              Google Places + email discovery pipeline ready
+            </span>
+          </div>
+        </section>
+
+        <section aria-label="Search parameters" class="card">
+          <header class="card-header">
+            <div class="card-title">Search parameters</div>
+            <div class="badge">Prototype only</div>
+          </header>
+
+          <div class="field-group">
+            <div class="field-label">What are they looking for?</div>
+            <div class="field">
+              <input type="text" placeholder="e.g. Dermal fillers, Hair restoration, Skin clinic"
+                aria-label="Clinic type keyword" />
+              <p class="field-hint">This will map to your Google Places keyword.</p>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">How far are you willing to send them?</div>
+            <div class="field-row">
+              <div class="field">
+                <select aria-label="Search radius">
+                  <option>20 km (recommended)</option>
+                  <option>40 km</option>
+                  <option>60 km</option>
+                  <option>80 km</option>
+                  <option>100 km (max)</option>
+                </select>
+                <p class="field-hint">Matches your current radius rules.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">User area</div>
+            <div class="field-row">
+              <div class="geo-pill">
+                <span class="geo-dot"></span>
+                Awaiting browser location…
+              </div>
+            </div>
+            <p class="field-hint">
+              In the real app this will auto-detect from IP / browser and fall back to manual entry if
+              permission is denied.
+            </p>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="summary-row">
+            <div class="summary-label">When you run a search, we will:</div>
+            <div class="summary-values">
+              <span class="pill-metric">
+                <strong>1.</strong> Check for registered clinics
+              </span>
+              <span class="pill-metric">
+                <strong>2.</strong> Create new leads from websites
+              </span>
+              <span class="pill-metric">
+                <strong>3.</strong> Queue invite emails with cooldown
+              </span>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>
+          <span class="footer-dot"></span>
+          This is a static design &ndash; wiring to the FastAPI search API comes next.
+        </span>
+        <a href="/docs" class="footer-link">View API documentation</a>
+      </footer>
+    </div>
+  </div>
+</body>
+
+</html>
