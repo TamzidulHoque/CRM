@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>Faces | Clinic Discovery</title>
+  <title>Clinic Discovery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
@@ -39,11 +39,11 @@
           </p>
 
           <div class="hero-actions">
-            <button class="btn btn-primary" type="button">
+            <button class="btn btn-primary" type="button" id="start-button">
               <span class="btn-icon">◎</span>
               Start to find real clinic
             </button>
-            <button class="btn btn-secondary" type="button">
+            <button class="btn btn-secondary" type="button" id="range-button">
               Select range in user area
             </button>
           </div>
@@ -51,13 +51,17 @@
           <div class="hero-meta">
             <span class="meta-item">
               <span class="meta-dot"></span>
-              Uses browser geolocation when available
+              Uses backend IP-based location for now
             </span>
             <span class="meta-item">
               <span class="meta-dot"></span>
               Google Places + email discovery pipeline ready
             </span>
           </div>
+
+          <p id="search-status" class="hero-subtitle" style="font-size: 0.8rem; color: #9ca3af;">
+            Click &ldquo;Start to find real clinic&rdquo; to run the existing Python pipeline through FastAPI.
+          </p>
         </section>
 
         <section aria-label="Search parameters" class="card">
@@ -69,7 +73,7 @@
           <div class="field-group">
             <div class="field-label">What are they looking for?</div>
             <div class="field">
-              <input type="text" placeholder="e.g. Dermal fillers, Hair restoration, Skin clinic"
+              <input id="keyword-input" type="text" placeholder="e.g. Dermal fillers, Hair restoration, Skin clinic"
                 aria-label="Clinic type keyword" />
               <p class="field-hint">This will map to your Google Places keyword.</p>
             </div>
@@ -96,12 +100,11 @@
             <div class="field-row">
               <div class="geo-pill">
                 <span class="geo-dot"></span>
-                Awaiting browser location…
+                Uses IP-based lookup from the backend.
               </div>
             </div>
             <p class="field-hint">
-              In the real app this will auto-detect from IP / browser and fall back to manual entry if
-              permission is denied.
+              In the real app this will auto-detect from browser geolocation and fall back to IP / manual entry.
             </p>
           </div>
 
@@ -127,12 +130,47 @@
       <footer class="footer">
         <span>
           <span class="footer-dot"></span>
-          This is a static design &ndash; wiring to the FastAPI search API comes next.
+          This is a live call into your existing Python pipeline.
         </span>
         <a href="/docs" class="footer-link">View API documentation</a>
       </footer>
     </div>
   </div>
+
+  <script>
+    (function () {
+      const startButton = document.getElementById("start-button");
+      const keywordInput = document.getElementById("keyword-input");
+      const statusEl = document.getElementById("search-status");
+
+      async function runLegacySearch() {
+        const keyword = (keywordInput.value || "").trim();
+        statusEl.textContent = "Running legacy search pipeline…";
+
+        try {
+          const response = await fetch("/api/legacy-search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ keyword: keyword || null }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || "Request failed");
+          }
+
+          statusEl.textContent =
+            "Search started using existing Python scripts. Check the server console for logs and emails.";
+        } catch (err) {
+          statusEl.textContent = "Error running search: " + err.message;
+        }
+      }
+
+      if (startButton) {
+        startButton.addEventListener("click", runLegacySearch);
+      }
+    })();
+  </script>
 </body>
 
 </html>
