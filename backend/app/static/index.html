@@ -21,17 +21,13 @@
             <div class="brand-tagline">Find and register real clinics faster</div>
           </div>
         </div>
-        <div class="status-pill">
-          <span class="status-dot"></span>
-          Live prototype
-        </div>
       </header>
 
       <main class="layout">
         <section aria-label="Clinic discovery hero">
           <p class="hero-overline">Clinic discovery</p>
           <h1 class="hero-title">
-            Find a <span class="hero-highlight">real clinic</span> near every user.
+            Find a <span class="hero-highlight">real clinic</span> near your location
           </h1>
           <p class="hero-subtitle">
             Use the user&rsquo;s live location to search verified aesthetic clinics, send registration
@@ -43,39 +39,23 @@
               <span class="btn-icon">◎</span>
               Start to find real clinic
             </button>
-            <button class="btn btn-secondary" type="button" id="range-button">
-              Select range in user area
-            </button>
           </div>
 
-          <div class="hero-meta">
-            <span class="meta-item">
-              <span class="meta-dot"></span>
-              Uses backend IP-based location for now
-            </span>
-            <span class="meta-item">
-              <span class="meta-dot"></span>
-              Google Places + email discovery pipeline ready
-            </span>
-          </div>
-
-          <p id="search-status" class="hero-subtitle" style="font-size: 0.8rem; color: #9ca3af;">
-            Click &ldquo;Start to find real clinic&rdquo; to run the existing Python pipeline through FastAPI.
+          <p id="search-status" class="hero-subtitle" style="font-size: 0.85rem; color: #9ca3af;">
+            Click the button to run your existing Python search pipeline through the API.
           </p>
         </section>
 
         <section aria-label="Search parameters" class="card">
           <header class="card-header">
             <div class="card-title">Search parameters</div>
-            <div class="badge">Prototype only</div>
           </header>
 
           <div class="field-group">
-            <div class="field-label">What are they looking for?</div>
+            <div class="field-label">What are you looking for?</div>
             <div class="field">
               <input id="keyword-input" type="text" placeholder="e.g. Dermal fillers, Hair restoration, Skin clinic"
                 aria-label="Clinic type keyword" />
-              <p class="field-hint">This will map to your Google Places keyword.</p>
             </div>
           </div>
 
@@ -90,50 +70,11 @@
                   <option>80 km</option>
                   <option>100 km (max)</option>
                 </select>
-                <p class="field-hint">Matches your current radius rules.</p>
               </div>
-            </div>
-          </div>
-
-          <div class="field-group">
-            <div class="field-label">User area</div>
-            <div class="field-row">
-              <div class="geo-pill">
-                <span class="geo-dot"></span>
-                Uses IP-based lookup from the backend.
-              </div>
-            </div>
-            <p class="field-hint">
-              In the real app this will auto-detect from browser geolocation and fall back to IP / manual entry.
-            </p>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="summary-row">
-            <div class="summary-label">When you run a search, we will:</div>
-            <div class="summary-values">
-              <span class="pill-metric">
-                <strong>1.</strong> Check for registered clinics
-              </span>
-              <span class="pill-metric">
-                <strong>2.</strong> Create new leads from websites
-              </span>
-              <span class="pill-metric">
-                <strong>3.</strong> Queue invite emails with cooldown
-              </span>
             </div>
           </div>
         </section>
       </main>
-
-      <footer class="footer">
-        <span>
-          <span class="footer-dot"></span>
-          This is a live call into your existing Python pipeline.
-        </span>
-        <a href="/docs" class="footer-link">View API documentation</a>
-      </footer>
     </div>
   </div>
 
@@ -145,25 +86,13 @@
 
       async function runLegacySearch() {
         const keyword = (keywordInput.value || "").trim();
-        statusEl.textContent = "Running legacy search pipeline…";
-
-        try {
-          const response = await fetch("/api/legacy-search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ keyword: keyword || null }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || "Request failed");
-          }
-
-          statusEl.textContent =
-            "Search started using existing Python scripts. Check the server console for logs and emails.";
-        } catch (err) {
-          statusEl.textContent = "Error running search: " + err.message;
+        // First show the registered clinics page, then let that page trigger the search.
+        const params = new URLSearchParams();
+        if (keyword) {
+          params.set("keyword", keyword);
         }
+        const query = params.toString();
+        window.location.href = "/clinics" + (query ? `?${query}` : "");
       }
 
       if (startButton) {
