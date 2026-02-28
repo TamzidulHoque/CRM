@@ -12,16 +12,30 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import main as legacy_main
-from user_location import get_current_location
-
 from .db import get_db
+
+# Lazy imports for legacy modules - wrapped in try/except to allow app to start
+def _get_legacy_main():
+    try:
+        import main as legacy_main
+        return legacy_main
+    except Exception as e:
+        raise ImportError(f"Failed to import legacy main module: {e}")
+
+def _get_current_location():
+    try:
+        from user_location import get_current_location
+        return get_current_location
+    except Exception as e:
+        raise ImportError(f"Failed to import user_location module: {e}")
 from .models import RegisteredClinic
 from .settings import get_settings
 
 
 class LegacySearchRequest(BaseModel):
     keyword: str | None = None
+    # Range selected on website in kilometers. If omitted, server uses default.
+    range_km: int | None = None
 
 
 class RegisteredClinicOut(BaseModel):
@@ -66,12 +80,22 @@ def create_app() -> FastAPI:
         """Call the existing run_system() using only the detected IP-based location."""
         keyword = payload.keyword or "Dermal fillers"
 
+        get_current_location = _get_current_location()
         lat, lng = get_current_location()
         if not lat or not lng:
             raise HTTPException(status_code=500, detail="Location detection failed")
 
         try:
-            legacy_main.run_system(lat, lng, keyword)
+            legacy_main = _get_legacy_main()
+            # If frontend provided a range (km), convert to meters and pass it
+            max_radius_m = None
+            if payload.range_km:
+                try:
+                    max_radius_m = int(payload.range_km) * 1000
+                except Exception:
+                    raise HTTPException(status_code=400, detail="Invalid range_km value")
+
+            legacy_main.run_system(lat, lng, keyword, max_radius_m=max_radius_m)
         except Exception as exc:  # pragma: no cover - legacy script errors surfaced to client
             raise HTTPException(status_code=500, detail=f"Legacy search failed: {exc}") from exc
 
