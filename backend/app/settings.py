@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     app_name: str = "Faces CRM API"
     server_port: int = 8001  # Default port, can override with PORT env var
 
-    # Example: postgresql+asyncpg://postgres:postgres@localhost:5432/faces_crm
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/faces_crm"
+    # Example: postgresql+asyncpg://postgres:password@localhost:5432/faces
+    database_url: str = "postgresql+asyncpg://postgres:Saad654321@localhost:5432/faces"
 
     cors_origins: list[str] = [
         "http://localhost:5173",

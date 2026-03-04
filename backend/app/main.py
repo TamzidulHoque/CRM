@@ -11,15 +11,24 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from .models import Clinic
+from .settings import get_settings
 
 from .db import get_db
 
 # Lazy imports for legacy modules - wrapped in try/except to allow app to start
+# we log errors here so that startup failures are visible in the server logs.
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def _get_legacy_main():
     try:
         import main as legacy_main
         return legacy_main
     except Exception as e:
+        logger.exception("unable to import legacy main module")
         raise ImportError(f"Failed to import legacy main module: {e}")
 
 def _get_current_location():
@@ -28,8 +37,7 @@ def _get_current_location():
         return get_current_location
     except Exception as e:
         raise ImportError(f"Failed to import user_location module: {e}")
-from .models import RegisteredClinic
-from .settings import get_settings
+
 
 
 class LegacySearchRequest(BaseModel):
@@ -38,10 +46,13 @@ class LegacySearchRequest(BaseModel):
     range_km: int | None = None
 
 
-class RegisteredClinicOut(BaseModel):
+class ClinicOut(BaseModel):
     id: UUID
     place_id: str | None
     name: str
+    registered: bool
+    invited_count: int
+    last_invited: datetime | None
     created_at: datetime
 
 
@@ -76,7 +87,7 @@ def create_app() -> FastAPI:
         return FileResponse(static_dir / "clinics.html")
 
     @app.post("/api/legacy-search")
-    def legacy_search(payload: LegacySearchRequest) -> dict[str, str]:
+    async def legacy_search(payload: LegacySearchRequest) -> dict[str, str]:
         """Call the existing run_system() using only the detected IP-based location."""
         keyword = payload.keyword or "Dermal fillers"
 
@@ -97,18 +108,24 @@ def create_app() -> FastAPI:
 
             legacy_main.run_system(lat, lng, keyword, max_radius_m=max_radius_m)
         except Exception as exc:  # pragma: no cover - legacy script errors surfaced to client
+            # log the full traceback so the server log contains diagnostic data
+            logger.exception("legacy search execution failed")
             raise HTTPException(status_code=500, detail=f"Legacy search failed: {exc}") from exc
 
         return {"status": "ok"}
 
-    @app.get("/api/clinics/registered", response_model=list[RegisteredClinicOut])
+    @app.get("/api/clinics/registered", response_model=list[ClinicOut])
     async def list_registered_clinics(
         db: AsyncSession = Depends(get_db),
-    ) -> list[RegisteredClinicOut]:
+    ) -> list[ClinicOut]:
         try:
-            result = await db.execute(select(RegisteredClinic).order_by(RegisteredClinic.created_at.desc()))
+            result = await db.execute(
+                select(Clinic)
+                .where(Clinic.registered == True)
+                .order_by(Clinic.created_at.desc())
+            )
             clinics = result.scalars().all()
-            return [RegisteredClinicOut.model_validate(c) for c in clinics]
+            return [ClinicOut.model_validate(c) for c in clinics]
         except Exception:
             # If the database is not reachable yet, treat as "no clinics"
             return []

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Integer, String, func, text
+from sqlalchemy import DateTime, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -13,35 +12,27 @@ class Base(DeclarativeBase):
     pass
 
 
-class ClinicLeadStatus(str, enum.Enum):
-    new = "new"
-    invited = "invited"
-    registered = "registered"
-    ignored = "ignored"
+class Clinic(Base):
+    """Unified clinic record tracking discovery, contact, and registration status."""
+    
+    __tablename__ = "clinics"
 
-
-class RegisteredClinic(Base):
-    __tablename__ = "registered_clinics"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    place_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
-    name: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
+    # Primary
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
     )
 
-
-class ClinicLead(Base):
-    __tablename__ = "clinic_leads"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    place_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
-
+    # Identity
     name: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
+    place_id: Mapped[str | None] = mapped_column(
+        String(255),
+        unique=True,
+        nullable=True,
+        index=True,
+    )
     website: Mapped[str | None] = mapped_column(String(2048), nullable=True)
-
     emails: Mapped[list[str]] = mapped_column(
         JSONB,
         nullable=False,
@@ -49,17 +40,32 @@ class ClinicLead(Base):
         server_default=text("'[]'::jsonb"),
     )
 
-    invite_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
-    last_invited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    next_invite_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    status: Mapped[ClinicLeadStatus] = mapped_column(
-        Enum(ClinicLeadStatus, name="clinic_lead_status"),
-        nullable=False,
-        default=ClinicLeadStatus.new,
-        server_default=text("'new'"),
+    # Location info
+    clinic_location: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
     )
 
+    # Status & tracking
+    registered: Mapped[bool] = mapped_column(
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    invited_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
+    last_invited: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

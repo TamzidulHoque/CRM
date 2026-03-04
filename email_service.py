@@ -34,4 +34,6 @@ Best regards.
 
 
 
-send_registration_email("tamzidulhoquetahmid@gmail.com", "Tahmid")
+if __name__ == "__main__":
+    # simple manual invocation when running as a script
+    send_registration_email("tamzidulhoquetahmid@gmail.com", "Tahmid")

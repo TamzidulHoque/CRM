@@ -1,62 +1,161 @@
-import json
-import os
+"""Persistent storage operations for clinic tracking.
+
+All state is stored in the PostgreSQL ``clinics`` table. This module provides
+helpers that abstract away the query details so the orchestration logic in
+``operations.py`` remains simple.
+"""
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 
-FILE_NAME = "registered_clinics.json"
-EMAIL_LOG_FILE = "email_log.json"
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
+
+# reuse the settings and models from the backend portion of the repo
+from backend.app.settings import get_settings
+from backend.app.models import Clinic
 
 
-def load_registered():
-    if not os.path.exists(FILE_NAME):
+@lru_cache(maxsize=1)
+def _get_sessionmaker():
+    """Create a synchronous ``Session`` factory backed by PostgreSQL.
+
+    The backend application uses an *async* engine, so its URL contains
+    ``+asyncpg``.  ``create_engine`` does not understand that dialect,
+    so we drop the suffix here.  ``lru_cache`` keeps one engine per
+    process and avoids recreating it on every call.
+    """
+
+    settings = get_settings()
+    db_url = settings.database_url
+    if db_url.startswith("postgresql+asyncpg://"):
+        sync_url = db_url.replace("+asyncpg", "")
+    else:
+        sync_url = db_url
+
+    engine = create_engine(sync_url, pool_pre_ping=True)
+    return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+
+# ---------------------------------------------------------------------------
+# Lookup and listing
+# ---------------------------------------------------------------------------
+
+def load_registered() -> list[str]:
+    """Return a list of clinic names marked as registered.
+
+    Pre-migration or schema issues are tolerated by returning an empty list
+    so that callers (the legacy search loop) behave as if no clinics have
+    registered yet.
+    """
+
+    Session = _get_sessionmaker()
+    try:
+        with Session() as session:
+            return session.scalars(
+                select(Clinic.name).where(Clinic.registered == True)
+            ).all()
+    except Exception:  # pragma: no cover - defensive fallback
+        print("storage.load_registered: database query failed, returning []")
         return []
 
-    with open(FILE_NAME, "r") as f:
-        return json.load(f)
 
+# ---------------------------------------------------------------------------
+# Recording and tracking
+# ---------------------------------------------------------------------------
 
-def save_registered(clinic_name):
-    data = load_registered()
-    data.append(clinic_name)
+def record_clinic(clinic_name: str) -> None:
+    """Ensure a Clinic entry exists for a discovered clinic.
 
-    with open(FILE_NAME, "w") as f:
-        json.dump(data, f, indent=4)
-
-
-def _load_email_log():
-    if not os.path.exists(EMAIL_LOG_FILE):
-        return {}
-
-    with open(EMAIL_LOG_FILE, "r") as f:
-        return json.load(f)
-
-
-def _save_email_log(log):
-    with open(EMAIL_LOG_FILE, "w") as f:
-        json.dump(log, f, indent=4)
-
-
-def can_send_email_to_clinic(clinic_name, cooldown_days=30):
+    If a clinic with this name does not yet exist it is created with
+    registered=False and tracked for future outreach.
     """
-    Return True if we are allowed to send an email to this clinic now.
-    Enforces a cooldown based on the last time we sent to this clinic.
+
+    Session = _get_sessionmaker()
+    with Session() as session:
+        clinic = session.scalar(
+            select(Clinic).where(Clinic.name == clinic_name)
+        )
+        if clinic is None:
+            clinic = Clinic(name=clinic_name, registered=False)
+            session.add(clinic)
+            session.commit()
+
+
+def save_registered(clinic_name: str) -> None:
+    """Mark a clinic as registered.
+
+    This updates the ``registered`` flag to True. If the clinic record does
+    not yet exist it is created.
     """
-    log = _load_email_log()
-    last_sent_str = log.get(clinic_name)
-    if not last_sent_str:
-        return True
 
-    try:
-        last_sent = datetime.fromisoformat(last_sent_str)
-    except Exception:
-        # If we cannot parse, allow sending and overwrite.
-        return True
+    Session = _get_sessionmaker()
+    with Session() as session:
+        clinic = session.scalar(
+            select(Clinic).where(Clinic.name == clinic_name)
+        )
+        if clinic is None:
+            clinic = Clinic(name=clinic_name, registered=True)
+            session.add(clinic)
+        else:
+            clinic.registered = True
+        session.commit()
 
-    now = datetime.now(timezone.utc)
-    return now - last_sent >= timedelta(days=cooldown_days)
+
+# ---------------------------------------------------------------------------
+# Email invitation tracking
+# ---------------------------------------------------------------------------
+
+def can_send_email_to_clinic(clinic_name: str, cooldown_days: int = 30) -> bool:
+    """Return True if enough time has elapsed since the last email invite.
+
+    If a clinic has never been invited or has no record yet, the function
+    returns True so that the first email attempt can be made.
+    """
+
+    Session = _get_sessionmaker()
+    with Session() as session:
+        clinic = session.scalar(
+            select(Clinic).where(Clinic.name == clinic_name)
+        )
+        if clinic is None or clinic.last_invited is None:
+            return True
+
+        now = datetime.now(timezone.utc)
+        return now - clinic.last_invited >= timedelta(days=cooldown_days)
 
 
-def mark_email_sent_to_clinic(clinic_name):
-    log = _load_email_log()
-    log[clinic_name] = datetime.now(timezone.utc).isoformat()
-    _save_email_log(log)
+def mark_email_sent_to_clinic(clinic_name: str, email: str = None) -> None:
+    """Record that an invitation email was sent to a clinic.
+
+    Updates the ``invited_count`` and ``last_invited`` timestamp. If the
+    clinic record does not exist yet it is created.
+    """
+
+    Session = _get_sessionmaker()
+    with Session() as session:
+        clinic = session.scalar(
+            select(Clinic).where(Clinic.name == clinic_name)
+        )
+        now = datetime.now(timezone.utc)
+
+        if clinic is None:
+            # Create a new record for this clinic
+            clinic = Clinic(
+                name=clinic_name,
+                invited_count=1,
+                last_invited=now,
+                registered=False,
+            )
+            if email:
+                clinic.emails = [email]
+            session.add(clinic)
+        else:
+            # Update existing record
+            clinic.invited_count = (clinic.invited_count or 0) + 1
+            clinic.last_invited = now
+            # Add email if provided and not already present
+            if email and email not in (clinic.emails or []):
+                clinic.emails = (clinic.emails or []) + [email]
+
+        session.commit()
 
