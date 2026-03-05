@@ -47,6 +47,9 @@ class LegacySearchRequest(BaseModel):
 
 
 class ClinicOut(BaseModel):
+    # allow populating directly from SQLAlchemy ORM objects
+    model_config = {"from_attributes": True}
+
     id: UUID
     place_id: str | None
     name: str
@@ -121,13 +124,17 @@ def create_app() -> FastAPI:
         try:
             result = await db.execute(
                 select(Clinic)
+                # only include rows where `registered` is true
                 .where(Clinic.registered == True)
                 .order_by(Clinic.created_at.desc())
             )
             clinics = result.scalars().all()
+            # use from_attributes so conversion works correctly
             return [ClinicOut.model_validate(c) for c in clinics]
-        except Exception:
-            # If the database is not reachable yet, treat as "no clinics"
+        except Exception as exc:
+            logger.exception("error listing registered clinics")
+            # return empty list on error so UI simply shows "no clinics";
+            # the log will contain details if something went wrong
             return []
 
     return app

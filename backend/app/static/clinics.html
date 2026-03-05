@@ -28,14 +28,13 @@
         <section class="card" aria-label="Registered clinics list">
           <header class="card-header">
             <div class="card-title">Registered clinics</div>
-            <div class="badge">Live from database</div>
           </header>
 
           <p class="field-hint" id="clinics-hint">
             Loading clinics from the <code>registered_clinics</code> database table…
           </p>
 
-          <div id="clinics-list" class="field-group"></div>
+          <div id="clinics-list" class="clinics-buttons"></div>
         </section>
       </main>
 
@@ -66,22 +65,31 @@
       });
 
       function renderClinic(clinic) {
-        const item = document.createElement("div");
-        item.className = "pill-metric";
-        const created = clinic.created_at
-          ? new Date(clinic.created_at).toLocaleString()
-          : "";
-        item.innerHTML = `<strong>${clinic.name}</strong>${clinic.place_id ? " · " + clinic.place_id : ""}${created ? " · " + created : ""
-          }`;
-        return item;
+        const container = document.createElement("div");
+        container.className = "clinic-item";
+        const nameEl = document.createElement("span");
+        nameEl.className = "clinic-name";
+        nameEl.textContent = clinic.name;
+        const btn = document.createElement("button");
+        btn.className = "clinic-btn";
+        btn.textContent = "Call the clinic";
+        btn.onclick = () => {
+          // TODO: Add action for this clinic
+          console.log("Action for clinic:", clinic.id);
+        };
+        container.appendChild(nameEl);
+        container.appendChild(btn);
+        return container;
       }
 
       try {
         const res = await fetch("/api/clinics/registered");
+
         if (!res.ok) {
           throw new Error("Request failed: " + res.status);
         }
         const data = await res.json();
+
 
         if (!Array.isArray(data) || data.length === 0) {
           hintEl.textContent = "No registered clinics found yet.";
