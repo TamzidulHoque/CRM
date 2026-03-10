@@ -6,8 +6,8 @@ SEARCH_RADIUS_START = 20000      # 20km
 SEARCH_RADIUS_MAX = 100000       # 100km
 SEARCH_RADIUS_STEP = 20000       # Increase 20km
 
-EMAIL_SENDER = "tamzidultahmid@gmail.com"
+EMAIL_SENDER = "tamzidulhoquetahmid@gmail.com"
 MAILTRAP_HOST = "sandbox.smtp.mailtrap.io"
 MAILTRAP_PORT = 25
-MAILTRAP_USERNAME = "98466fb89eb6e8"
-MAILTRAP_PASSWORD = "b0c8af0902424d"
+MAILTRAP_USERNAME = "ba0b90f44525ae"
+MAILTRAP_PASSWORD = "f565983ec1c5eb"

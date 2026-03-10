@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -90,7 +90,7 @@ def create_app() -> FastAPI:
         return FileResponse(static_dir / "clinics.html")
 
     @app.post("/api/legacy-search")
-    async def legacy_search(payload: LegacySearchRequest) -> dict[str, str]:
+    async def legacy_search(payload: LegacySearchRequest, background_tasks: BackgroundTasks) -> dict[str, str]:
         """Call the existing run_system() using only the detected IP-based location."""
         keyword = payload.keyword or "Dermal fillers"
 
@@ -109,7 +109,8 @@ def create_app() -> FastAPI:
                 except Exception:
                     raise HTTPException(status_code=400, detail="Invalid range_km value")
 
-            legacy_main.run_system(lat, lng, keyword, max_radius_m=max_radius_m)
+            # Run the search in the background to allow immediate response
+            background_tasks.add_task(legacy_main.run_system, lat, lng, keyword, max_radius_m=max_radius_m)
         except Exception as exc:  # pragma: no cover - legacy script errors surfaced to client
             # log the full traceback so the server log contains diagnostic data
             logger.exception("legacy search execution failed")
