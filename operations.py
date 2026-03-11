@@ -21,7 +21,7 @@ from storage import (
     load_registered,
     mark_email_sent_to_clinic,
     save_registered,
-    record_clinic,
+    save_searched_clinic_data
 )
 
 
@@ -66,41 +66,37 @@ def run_system(
     radius = SEARCH_RADIUS_START
     upper = max_radius_m if max_radius_m is not None else SEARCH_RADIUS_MAX
 
-    while radius <= upper:
+    while radius <= upper:  #test purposes inserted 2000, should be upper
         clinics = search_clinics(user_lat, user_lng, radius, keywords)
 
         for clinic in clinics:
             name = clinic.get("name")
-            record_clinic(name)
-
-            if name in registered:
-                return name
-
-            website = get_website(clinic.get("place_id"))
-            if not website:
+            if not name:
                 continue
 
-            for email in extract_emails(website):
-                if not EMAIL_REGEX.fullmatch(email):
-                    continue
+            website = clinic.get("website")
+            if not website and clinic.get("place_id"):
+                website = get_website(clinic.get("place_id"))
+                clinic["website"] = website
 
-                if not can_send_email_to_clinic(name):
-                    continue
+            valid_emails = []
+            if website:
+                for email in extract_emails(website):
+                    if EMAIL_REGEX.fullmatch(email):
+                        valid_emails.append(email)
 
-                send_registration_email(email, name)
-                save_registered(name)
+            # Store all information into the database first
+            save_searched_clinic_data(clinic, keywords, valid_emails)
+
+            if not valid_emails or not can_send_email_to_clinic(name):
+                continue
+
+            # Execute the email operations
+            for email in valid_emails:
+                # send_registration_email(email, name)
+                # save_registered(name)
                 mark_email_sent_to_clinic(name, email)
 
         radius += SEARCH_RADIUS_STEP
 
     return None
-
-
-def search_and_notify(user_lat: float, user_lng: float, keywords: str) -> None:
-    """Wrapper used by the command‑line driver to print progress."""
-
-    found = run_system(user_lat, user_lng, keywords)
-    if found:
-        print("Registered clinic found:", found)
-    else:
-        print("No registered clinic found in range.")

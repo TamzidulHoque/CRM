@@ -40,6 +40,21 @@ class Clinic(Base):
         server_default=text("'[]'::jsonb"),
     )
 
+    keywords: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+    )
+
+    phone: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+    )
+
+
     # Location info
     clinic_location: Mapped[dict] = mapped_column(
         JSONB,

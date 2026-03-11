@@ -63,22 +63,65 @@ def load_registered() -> list[str]:
 # Recording and tracking
 # ---------------------------------------------------------------------------
 
-def record_clinic(clinic_name: str) -> None:
-    """Ensure a Clinic entry exists for a discovered clinic.
-
-    If a clinic with this name does not yet exist it is created with
-    registered=False and tracked for future outreach.
+def save_searched_clinic_data(clinic_data: dict, keyword: str, emails: list[str]) -> None:
+    """Save all discovered clinic data into the database.
+    
+    Creates or updates a clinic record using place_id or name as the primary identifier.
     """
-
     Session = _get_sessionmaker()
     with Session() as session:
-        clinic = session.scalar(
-            select(Clinic).where(Clinic.name == clinic_name)
-        )
+        place_id = clinic_data.get("place_id")
+        name = clinic_data.get("name")
+        
+        if not name:
+            return
+            
+        clinic = None
+        if place_id:
+            clinic = session.scalar(select(Clinic).where(Clinic.place_id == place_id))
         if clinic is None:
-            clinic = Clinic(name=clinic_name, registered=False)
+            clinic = session.scalar(select(Clinic).where(Clinic.name == name))
+            
+        if clinic is None:
+            clinic = Clinic(name=name, registered=False)
             session.add(clinic)
-            session.commit()
+            
+        # Update identity
+        if place_id and not clinic.place_id:
+            clinic.place_id = place_id
+            
+        phone_number = clinic_data.get("phone_number")
+        if phone_number and phone_number not in (clinic.phone or []):
+            clinic.phone = list(clinic.phone or []) + [phone_number]
+            
+        website = clinic_data.get("website")
+        if website:
+            clinic.website = website
+            
+        # Update keywords
+        if keyword and keyword not in (clinic.keywords or []):
+            clinic.keywords = list(clinic.keywords or []) + [keyword]
+            
+        # Update emails
+        existing_emails = set(clinic.emails or [])
+        new_emails = list(existing_emails.union(set(emails)))
+        clinic.emails = new_emails
+        
+        # Update location info
+        location_info = dict(clinic.clinic_location or {})
+        location_info.update({
+            "address": clinic_data.get("address"),
+            "latitude": clinic_data.get("latitude"),
+            "longitude": clinic_data.get("longitude"),
+            "rating": clinic_data.get("rating"),
+            "opening_hours": clinic_data.get("opening_hours"),
+            "reviews": clinic_data.get("reviews"),
+            "google_maps_link": clinic_data.get("google_maps_link"),
+        })
+        # Remove None values
+        clinic.clinic_location = {k: v for k, v in location_info.items() if v is not None}
+        
+        session.commit()
 
 
 def save_registered(clinic_name: str) -> None:
