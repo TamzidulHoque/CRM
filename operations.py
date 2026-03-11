@@ -20,7 +20,6 @@ from storage import (
     can_send_email_to_clinic,
     load_registered,
     mark_email_sent_to_clinic,
-    save_registered,
     save_searched_clinic_data
 )
 

@@ -122,28 +122,7 @@ def save_searched_clinic_data(clinic_data: dict, keyword: str, emails: list[str]
         clinic.clinic_location = {k: v for k, v in location_info.items() if v is not None}
         
         session.commit()
-
-
-def save_registered(clinic_name: str) -> None:
-    """Mark a clinic as registered.
-
-    This updates the ``registered`` flag to True. If the clinic record does
-    not yet exist it is created.
-    """
-
-    Session = _get_sessionmaker()
-    with Session() as session:
-        clinic = session.scalar(
-            select(Clinic).where(Clinic.name == clinic_name)
-        )
-        if clinic is None:
-            clinic = Clinic(name=clinic_name, registered=True)
-            session.add(clinic)
-        else:
-            clinic.registered = True
-        session.commit()
-
-
+        
 # ---------------------------------------------------------------------------
 # Email invitation tracking
 # ---------------------------------------------------------------------------
