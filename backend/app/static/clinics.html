@@ -31,7 +31,7 @@
           </header>
 
           <p class="field-hint" id="clinics-hint">
-            Loading clinics from the <code>registered_clinics</code> database table…
+            Loading clinics and running search for "<span id="search-keyword"></span>"...
           </p>
 
           <div id="clinics-list" class="clinics-buttons"></div>
@@ -55,14 +55,63 @@
       const params = new URLSearchParams(window.location.search);
       const keyword = params.get("keyword");
 
-      // Fire the legacy search pipeline in the background after the page is visible.
+      // Update hint with keyword if provided
+      const searchKeywordEl = document.getElementById("search-keyword");
+      if (searchKeywordEl) {
+        searchKeywordEl.textContent = keyword || "all categories";
+      }
+
+      // Function to load clinics from API
+      async function loadClinics() {
+        try {
+          // reset list to avoid duplicates across reloads
+          listEl.innerHTML = "";
+
+          // Pass keyword to the API if available
+          const clinicsUrl = keyword
+            ? `/api/clinics/registered?keyword=${encodeURIComponent(keyword)}`
+            : "/api/clinics/registered";
+          const res = await fetch(clinicsUrl);
+
+          if (!res.ok) {
+            throw new Error("Request failed: " + res.status);
+          }
+          const data = await res.json();
+
+          if (!Array.isArray(data) || data.length === 0) {
+            if (keyword) {
+              hintEl.textContent = `No registered clinics found matching "${keyword}".`;
+            } else {
+              hintEl.textContent = "No registered clinics found yet.";
+            }
+            return;
+          }
+
+          hintEl.textContent = `Showing ${data.length} registered clinic${data.length === 1 ? "" : "s"}${keyword ? ` matching "${keyword}"` : ""}.`;
+
+          data.forEach((clinic) => {
+            listEl.appendChild(renderClinic(clinic));
+          });
+        } catch (err) {
+          hintEl.textContent = "Error loading clinics: " + err.message;
+        }
+      }
+
+      // Initial load of clinics so the user sees registered clinics first
+      loadClinics();
+
+      // Fire the legacy search pipeline in the background after the page is visible,
+      // then poll once after a short delay.
       fetch("/api/legacy-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keyword: keyword || null }),
-      }).catch(() => {
-        // Ignore errors here; the clinics list below is still loaded.
-      });
+      })
+        .then(() => setTimeout(loadClinics, 3000))
+        .catch((err) => {
+          console.error("Legacy search error:", err);
+          hintEl.textContent = "Search failed; showing existing registered clinics only.";
+        });
 
       function renderClinic(clinic) {
         const container = document.createElement("div");
@@ -80,29 +129,6 @@
         container.appendChild(nameEl);
         container.appendChild(btn);
         return container;
-      }
-
-      try {
-        const res = await fetch("/api/clinics/registered");
-
-        if (!res.ok) {
-          throw new Error("Request failed: " + res.status);
-        }
-        const data = await res.json();
-
-
-        if (!Array.isArray(data) || data.length === 0) {
-          hintEl.textContent = "No registered clinics found yet.";
-          return;
-        }
-
-        hintEl.textContent = `Showing ${data.length} registered clinic${data.length === 1 ? "" : "s"}.`;
-
-        data.forEach((clinic) => {
-          listEl.appendChild(renderClinic(clinic));
-        });
-      } catch (err) {
-        hintEl.textContent = "Error loading clinics: " + err.message;
       }
     })();
   </script>

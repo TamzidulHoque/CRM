@@ -4,12 +4,12 @@ from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from .models import Clinic
 from .settings import get_settings
@@ -25,8 +25,11 @@ logger = logging.getLogger(__name__)
 
 def _get_legacy_main():
     try:
-        import main as legacy_main
-        return legacy_main
+        # The legacy orchestration entrypoint lives in `operations.py`.
+        # `main.py` in the repo is a small CLI wrapper and does not expose `run_system`,
+        # so importing it here causes runtime failures.
+        import operations as legacy_ops
+        return legacy_ops
     except Exception as e:
         logger.exception("unable to import legacy main module")
         raise ImportError(f"Failed to import legacy main module: {e}")
@@ -121,16 +124,21 @@ def create_app() -> FastAPI:
     @app.get("/api/clinics/registered", response_model=list[ClinicOut])
     async def list_registered_clinics(
         db: AsyncSession = Depends(get_db),
+        keyword: str | None = Query(None, description="Filter clinics by keyword (fuzzy match)"),
     ) -> list[ClinicOut]:
         try:
-            result = await db.execute(
-                select(Clinic)
-                # only include rows where `registered` is true
-                .where(Clinic.registered == True)
-                .order_by(Clinic.created_at.desc())
-            )
+            query = select(Clinic).where(Clinic.registered == True)
+            
+            # Filter by exactly matching keyword if provided
+            if keyword:
+                # User wants exact matches for the predefined options
+                # (e.g., "Dermal fillers", "Skin care", "Dental clinic")
+                query = query.where(Clinic.keywords == keyword)
+            
+            query = query.order_by(Clinic.created_at.desc())
+            result = await db.execute(query)
             clinics = result.scalars().all()
-            # use from_attributes so conversion works correctly
+            # use fromattributes so conversion works correctly
             return [ClinicOut.model_validate(c) for c in clinics]
         except Exception as exc:
             logger.exception("error listing registered clinics")

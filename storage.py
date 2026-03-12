@@ -98,9 +98,13 @@ def save_searched_clinic_data(clinic_data: dict, keyword: str, emails: list[str]
         if website:
             clinic.website = website
             
-        # Update keywords
-        if keyword and keyword not in (clinic.keywords or []):
-            clinic.keywords = list(clinic.keywords or []) + [keyword]
+        # Update keywords (stored as a single string)
+        if keyword:
+            if isinstance(keyword, (list, tuple)):
+                keyword_value = " ".join([str(x).strip() for x in keyword if str(x).strip()])
+            else:
+                keyword_value = str(keyword).strip()
+            clinic.keywords = keyword_value or clinic.keywords
             
         # Update emails
         existing_emails = set(clinic.emails or [])

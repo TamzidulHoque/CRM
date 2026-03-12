@@ -54,8 +54,13 @@
           <div class="field-group">
             <div class="field-label">What are you looking for?</div>
             <div class="field">
-              <input id="keyword-input" type="text" placeholder="e.g. Dermal fillers, Hair restoration, Skin clinic"
-                aria-label="Clinic type keyword" />
+              <input id="keyword-input" list="keyword-options" placeholder="Type to search…"
+                aria-label="Clinic type keyword" autocomplete="off" />
+              <datalist id="keyword-options">
+                <option value="Dermal fillers"></option>
+                <option value="Skin care"></option>
+                <option value="Dental clinic"></option>
+              </datalist>
             </div>
           </div>
 

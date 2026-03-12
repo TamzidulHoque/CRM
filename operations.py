@@ -65,7 +65,7 @@ def run_system(
     radius = SEARCH_RADIUS_START
     upper = max_radius_m if max_radius_m is not None else SEARCH_RADIUS_MAX
 
-    while radius <= upper:  #test purposes inserted 2000, should be upper
+    while radius <= upper:
         clinics = search_clinics(user_lat, user_lng, radius, keywords)
 
         for clinic in clinics:

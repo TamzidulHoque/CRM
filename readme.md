@@ -1,5 +1,10 @@
 This is faces app CRM test project.
 
+## Category sorting 
+1. All the clinics are not sorted according to category while showing on the registered place
+2.  The category options should be bound in specific option bar for correctly sorting in database. 
+
+
 ## Data Storage
 
 Legacy artifacts such as the JSON tracker files and the `bin/`

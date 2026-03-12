@@ -40,11 +40,9 @@ class Clinic(Base):
         server_default=text("'[]'::jsonb"),
     )
 
-    keywords: Mapped[list[str]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=list,
-        server_default=text("'[]'::jsonb"),
+    keywords: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
     )
 
     phone: Mapped[list[str]] = mapped_column(
