@@ -53,14 +53,16 @@
 
           <div class="field-group">
             <div class="field-label">What are you looking for?</div>
-            <div class="field">
-              <input id="keyword-input" list="keyword-options" placeholder="Type to search…"
-                aria-label="Clinic type keyword" autocomplete="off" />
-              <datalist id="keyword-options">
-                <option value="Dermal fillers"></option>
-                <option value="Skin care"></option>
-                <option value="Dental clinic"></option>
-              </datalist>
+            <div class="field-row">
+              <div class="field">
+                <select id="keyword-input" aria-label="Clinic type keyword">
+                  <option value="">Select a clinic type...</option>
+                  <option value="Dermal fillers">Dermal fillers</option>
+                  <option value="Skin care">Skin care</option>
+                  <option value="Dental clinic">Dental clinic</option>
+                  <option value="Eye care">Eye care</option>
+                </select>
+              </div>
             </div>
           </div>
 
